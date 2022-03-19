@@ -26,14 +26,16 @@
 
 
 /**
- * Symbols used:
- *      : macro under expansion
- *      % definition of macro under expansion
- *      ? parameter under expansion
- *      ^ expanded parameter
- *      ! macros disabled for expansion
- *      > expanded macro
- *      ~ disabled token
+ * Symbols used
+ *      :       macro under expansion
+ *      %       definition of macro under expansion
+ *      ?       parameter under expansion
+ *      ^       expanded parameter
+ *      !       macros disabled for expansion
+ *      >       expanded macro
+ *      ~       disabled token
+ *      $       empty token
+ *      ...     skip expansions
  */
 int main(void)
 {
@@ -211,27 +213,162 @@ int main(void)
     #undef baz
 
     printf("%s\n", HA_STRINGIZE(OBSTRUCT(pr_id)));
-    /** TODO
-     * 
-     * 
-     */
-
-    printf("%s\n", HA_STRINGIZE(pr(5)));
-    /** TODO
-     * 
-     * 
-     */
-
-    printf("%s\n", HA_STRINGIZE(EXPAND(pr(5))));
-    /** TODO
-     * 
-     * 
+    /**
+     * HA_STRINGIZE(OBSTRUCT(pr_id))
+     *  : HA_STRINGIZE(OBSTRUCT(pr_id))
+     *  % HA_STRINGIZE(...) HA_STRINGIZE_UNEXPANDED(__VA_ARGS__)
+     *  ? __VA_ARGS__
+     *  ^ OBSTRUCT(pr_id)
+     *      : OBSTRUCT(pr_id)
+     *      % OBSTRUCT(...) __VA_ARGS__ DEFER(EMPTY)()
+     *      ? __VA_ARGS__
+     *      ^ pr_id
+     *      ! OBSTRUCT
+     *      > pr_id DEFER(EMPTY)()
+     *          : DEFER(EMPTY)
+     *          % DEFER(...) __VA_ARGS__ EMPTY()
+     *          ? __VA_ARGS__
+     *          ^ EMPTY
+     *          ! OBSTRUCT DEFER
+     *          > EMPTY EMPTY()
+     *              : EMPTY()
+     *              % EMPTY(...)
+     *              ? __VA_ARGS__
+     *              ^
+     *              ! OBSTRUCT DEFER EMPTY
+     *              > $
+     *          > EMPTY $
+     *      > pr_id EMPTY $()
+     *  ^ pr_id EMPTY $()
+     *  ! HA_STRINGIZE
+     *  > HA_STRINGIZE_UNEXPANDED(pr_id EMPTY ())
+     *      : HA_STRINGIZE_UNEXPANDED(pr_id EMPTY ())
+     *      % HA_STRINGIZE_UNEXPANDED(...) #__VA_ARGS__
+     *      ? __VA_ARGS__
+     *      ^ pr_id EMPTY ()
+     *          : EMPTY ()
+     *          % EMPTY(...)
+     *          ? __VA_ARGS__
+     *          ^
+     *          ! HA_STRINGIZE EMPTY
+     *          > $
+     *      ^ pr_id $
+     *      ! HA_STRINGIZE HA_STRINGIZE_UNEXPANDED
+     *      > "pr_id EMPTY ()"
+     *  > "pr_id EMPTY ()"
      */
 
     printf("%s\n", HA_STRINGIZE(EXPAND(EXPAND(pr(5)))));
-    /** TODO
-     * 
-     * 
+    /**
+     * HA_STRINGIZE(EXPAND(EXPAND(pr(5))))
+     *  : HA_STRINGIZE(EXPAND(EXPAND(pr(5))))
+     *  % HA_STRINGIZE(...) HA_STRINGIZE_UNEXPANDED(__VA_ARGS__)
+     *  ? __VA_ARGS__
+     *  ^ EXPAND(EXPAND(pr(5)))
+     *      : EXPAND(EXPAND(pr(5)))
+     *      % EXPAND(...) __VA_ARGS__
+     *      ? __VA_ARGS__
+     *      ^ EXPAND(pr(5))
+     *          : EXPAND(pr(5))
+     *          % EXPAND(...) __VA_ARGS__
+     *          ? __VA_ARGS__
+     *          ^ pr(5)
+     *              : pr(5)
+     *              % pr(n) ((n == 1) ? 1 : DEFER(pr_id)()(n - 1))
+     *              ? n
+     *              ^ 5
+     *              ! pr
+     *              > ((5 == 1) ? 1 : DEFER(pr_id)()(5 - 1))
+     *                  : DEFER(pr_id)
+     *                  % DEFER(...) __VA_ARGS__ EMPTY()
+     *                  ? __VA_ARGS__
+     *                  ^ pr_id
+     *                  ! pr DEFER
+     *                  > pr_id EMPTY()
+     *                      : EMPTY()
+     *                      % EMPTY(...)
+     *                      ? __VA_ARGS__
+     *                      ^
+     *                      ! pr DEFER EMPTY
+     *                      > $
+     *                  > pr_id $
+     *              > ((5 == 1) ? 1 : pr_id $()(5 - 1))
+     *          ^ ((5 == 1) ? 1 : pr_id $()(5 - 1))
+     *          ! EXPAND
+     *          > ((5 == 1) ? 1 : pr_id ()(5 - 1))
+     *              : pr_id ()
+     *              % pr_id() pr
+     *              ?
+     *              ^
+     *              ! EXPAND pr_id
+     *              > pr
+     *          > ((5 == 1) ? 1 : pr(5 - 1))
+     *              : pr(5 - 1))
+     *              % pr(n) ((n == 1) ? 1 : DEFER(pr_id)()(n - 1))
+     *              ? n
+     *              ^ 5 - 1
+     *              ! EXPAND pr
+     *              > ((5 - 1 == 1) ? 1 : DEFER(pr_id)()(5 - 1 - 1))
+     *                  : DEFER(pr_id)
+     *                  % DEFER(...) __VA_ARGS__ EMPTY()
+     *                  ? __VA_ARGS__
+     *                  ^ pr_id
+     *                  ! EXPAND pr DEFER
+     *                  > pr_id EMPTY()
+     *                      : EMPTY()
+     *                      % EMPTY(...)
+     *                      ? __VA_ARGS__
+     *                      ^
+     *                      ! EXPAND pr DEFER EMPTY
+     *                      > $
+     *                  > pr_id $
+     *              > ((5 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1))
+     *          > ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1)))
+     *      ^ ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1)))
+     *      ! EXPAND
+     *      > ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1)))
+     *          : pr_id ()
+     *          % pr_id() pr
+     *          ?
+     *          ^
+     *          ! EXPAND pr_id
+     *          > pr
+     *      > ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : pr(5 - 1 - 1)))
+     *          : pr(5 - 1 - 1)
+     *          % pr(n) ((n == 1) ? 1 : DEFER(pr_id)()(n - 1))
+     *          ? n
+     *          ^ 5 - 1 - 1
+     *          ! EXPAND pr
+     *          > ((5 - 1 - 1 == 1) ? 1 : DEFER(pr_id)()(5 - 1 - 1 - 1))
+     *              : DEFER(pr_id)
+     *              % DEFER(...) __VA_ARGS__ EMPTY()
+     *              ? __VA_ARGS__
+     *              ^ pr_id
+     *              ! EXPAND pr DEFER
+     *              > pr_id EMPTY()
+     *                  : EMPTY()
+     *                  % EMPTY(...)
+     *                  ? __VA_ARGS__
+     *                  ^
+     *                  ! EXPAND pr DEFER EMPTY
+     *                  > $
+     *              > pr_id $
+     *          > ((5 - 1 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1 - 1))
+     *      > ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1 - 1))))
+     *  ^ ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id $()(5 - 1 - 1 - 1))))
+     *  ! HA_STRINGIZE
+     *  > HA_STRINGIZE_UNEXPANDED(((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1 - 1)))))
+     *      : HA_STRINGIZE_UNEXPANDED(((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1 - 1)))))
+     *      % HA_STRINGIZE_UNEXPANDED(...) #__VA_ARGS__
+     *      ? __VA_ARGS__
+     *      ^ ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1 - 1))))
+     *          : pr_id ()
+     *          ...
+     *      ^ ((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr(5 - 1 - 1 - 1))))
+     *      ^ ...
+     *      ! HA_STRINGIZE HA_STRINGIZE_UNEXPANDED
+     *      > "((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1 - 1))))"
+     *  > "((5 == 1) ? 1 : ((5 - 1 == 1) ? 1 : ((5 - 1 - 1 == 1) ? 1 : pr_id ()(5 - 1 - 1 - 1))))"
      */
 
     return 0;
