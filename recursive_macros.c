@@ -86,8 +86,10 @@ int main(void)
     #undef f
     #undef a
 
-    #define foo(x) bar x
-    #define bar foo(foo) (2) baz(foo) (2)
+    #define a baz
+    #define b (2)
+    #define foo(x) x
+    #define bar a b a (b) foo(foo) foo(baz) (b) foo(baz)a (b)
     #define baz(x) x
     printf("%s\n", HA_STRINGIZE(bar));
     /**
@@ -97,41 +99,113 @@ int main(void)
      *  ? __VA_ARGS__
      *  ^ bar
      *      : bar
-     *      % bar foo(foo) (2) baz(foo) (2)
+     *      % bar a b a (b) foo(foo) foo(baz) (b) foo(baz)a (b)
      *      ! bar
-     *      > foo(foo) (2) baz(foo) (2)
-     *          : foo(foo)
-     *          % foo(x) bar x
-     *          ? x
-     *          ^ foo
-     *          ! bar foo
-     *          > ~bar ~foo
-     *      > ~bar ~foo (2) baz(foo) (2)
-     *          : baz(foo)
+     *      > a b a (b) foo(foo) foo(baz) (b) foo(baz)a (b)
+     *          : a
+     *          % a baz
+     *          ! bar a
+     *          > baz
+     *      > baz b a (b) foo(foo) foo(baz) (b) foo(baz)a (b)
+     *          : b
+     *          % b (2)
+     *          ! bar b
+     *          > (2)
+     *      > baz (2) a (b) foo(foo) foo(baz) (b) foo(baz)a (b)
+     *          : a
+     *          % a baz
+     *          ! bar a
+     *          > baz
+     *      > baz (2) baz (b) foo(foo) foo(baz) (b) foo(baz)a (b)
+     *          : baz (b)
      *          % baz(x) x
      *          ? x
-     *          ^ foo
+     *          ^ b
+     *              : b
+     *              % b (2)
+     *              ! bar b
+     *              > (2)
+     *          ^ (2)
      *          ! bar baz
-     *          > foo
-     *      > ~bar ~foo (2) foo (2)
-     *          : foo(2)
-     *          % foo(x) bar x
+     *          > (2)
+     *      > baz (2) (2) foo(foo) foo(baz) (b) foo(baz)a (b)
+     *          : foo(foo)
+     *          % foo(x) x
      *          ? x
-     *          ^ 2
+     *          ^ foo
      *          ! bar foo
-     *          > ~bar 2
-     *      > ~bar ~foo (2) ~bar 2
-     *  ^ ~bar ~foo (2) ~bar 2
+     *          > ~foo
+     *      > baz (2) (2) ~foo foo(baz) (b) foo(baz)a (b)
+     *          : foo(baz)
+     *          % foo(x) x
+     *          ? x
+     *          ^ baz
+     *          ! bar foo
+     *          > baz
+     *      > baz (2) (2) ~foo baz (b) foo(baz)a (b)
+     *          : baz (b)
+     *          % baz(x) x
+     *          ? x
+     *          ^ b
+     *              : b
+     *              % b (2)
+     *              ! bar b
+     *              > (2)
+     *          ^ (2)
+     *          ! bar baz
+     *          > (2)
+     *      > baz (2) (2) ~foo (2) foo(baz)a (b)
+     *          : foo(baz)
+     *          % foo(x) x
+     *          ? x
+     *          ^ baz
+     *          ! bar foo
+     *          > baz
+     *      > baz (2) (2) ~foo (2) baza (b)
+     *          : a
+     *          % a baz
+     *          ! bar a
+     *          > baz
+     *      > baz (2) (2) ~foo (2) bazbaz (b)
+     *          : baz (b)
+     *          % baz(x) x
+     *          ? x
+     *          ^ b
+     *              : b
+     *              % b (2)
+     *              ! bar b
+     *              > (2)
+     *          ^ (2)
+     *          ! bar baz
+     *          > (2)
+     *      > baz (2) (2) ~foo (2) baz(2)
+     *  ^ baz (2) (2) ~foo (2) baz(2)
      *  ! HA_STRINGIZE
-     *  > HA_STRINGIZE_UNEXPANDED(~bar ~foo (2) ~bar 2)
-     *      : HA_STRINGIZE_UNEXPANDED(~bar ~foo (2) ~bar 2)
+     *  > HA_STRINGIZE_UNEXPANDED(baz (2) (2) ~foo (2) baz(2))
+     *      : HA_STRINGIZE_UNEXPANDED(baz (2) (2) ~foo (2) baz(2))
      *      % HA_STRINGIZE_UNEXPANDED(...) #__VA_ARGS__
      *      ? __VA_ARGS__
-     *      ^ ~bar ~foo (2) ~bar 2
+     *      ^ baz (2) (2) ~foo (2) baz(2)
+     *          : baz (2)
+     *          % baz(x) x
+     *          ? x
+     *          ^ 2
+     *          ! HA_STRINGIZE baz
+     *          > 2
+     *      ^ 2 (2) ~foo (2) baz(2)
+     *          : baz(2)
+     *          % baz(x) x
+     *          ? x
+     *          ^ 2
+     *          ! HA_STRINGIZE baz
+     *          > 2
+     *      ^ 2 (2) ~foo (2) 2
      *      ! HA_STRINGIZE HA_STRINGIZE_UNEXPANDED
-     *      > "bar foo (2) bar 2"
-     *  > "bar foo (2) bar 2"
+     *      > "baz (2) (2) foo (2) baz(2)"
+     *  > "baz (2) (2) foo (2) baz(2)"
      */
+    #undef a
+    #undef b
     #undef foo
     #undef bar
     #undef baz
